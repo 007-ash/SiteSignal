@@ -124,7 +124,3 @@ These items must be resolved through official metadata review, domain research, 
 - exact St. Lawrence analysis CRS;
 - infrastructure-source selection and freshness acceptance;
 - supported-county data-quality thresholds.
-
-## Interview summary
-
-> SiteSignal V1 is a deterministic parcel-triage engine. It subtracts preliminary constraint geometry, tests whether enough contiguous usable land remains for the requested MW, scores survivors on five documented parcel-level proxies, and returns the next diligence action. The LLM explains an immutable result. It does not decide. Deeper grid analysis, real zoning research, multi-parcel assembly, and continuous project management arrive in later phases because those require different evidence and system behavior.
