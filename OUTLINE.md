@@ -60,9 +60,6 @@ From a clean checkout:
 7. calculate a known area in a projected CRS;
 8. run the same proof in CI and the target deployment environment.
 
-### Interview drill
-
-> Why did you prove PostGIS and deployment before writing parcel logic?
 
 ---
 
@@ -95,10 +92,6 @@ Create the first idempotent, versioned geospatial ingestion pipeline using St. L
 - gross acreage matches an independently calculated fixture;
 - county query counts are stable;
 - load-run provenance is queryable.
-
-### Interview drill
-
-> Walk me from a raw parcel file to a queryable PostGIS row.
 
 ---
 
@@ -143,10 +136,6 @@ For terrain:
 - synthetic known geometries intersect the expected classes;
 - slope derivation is reproducible from the same DEM and parameters.
 
-### Interview drill
-
-> Why is slope a derived dataset rather than a field you downloaded?
-
 ---
 
 ## Milestone 3 — Usable-area engine
@@ -188,10 +177,6 @@ Implement the core product: subtract constrained geometry and test the largest c
 
 A hand-calculated synthetic parcel produces the expected constrained areas, largest contiguous component, and eligibility result within an agreed numerical tolerance.
 
-### Interview drill
-
-> Why is “wetland intersection” not a parcel kill?
-
 ---
 
 ## Milestone 4 — Suitability-source adapters
@@ -223,11 +208,6 @@ Load the sources required for five transparent Phase 1 suitability factors.
 ### Exit test
 
 For a synthetic parcel and small real sample, each raw metric can be calculated independently and traced to one source version.
-
-### Interview drill
-
-> Why is parcel class land use rather than zoning?
-
 ---
 
 ## Milestone 5 — Deterministic scoring and ranking
@@ -269,10 +249,6 @@ Convert raw metrics into auditable scores without hiding uncertainty.
 
 A table of controlled fixtures reproduces every raw metric, score, composite, tier, and next action exactly.
 
-### Interview drill
-
-> Why do you return the raw metric instead of only the score?
-
 ---
 
 ## Milestone 6 — Screening workflow and API
@@ -309,10 +285,6 @@ Turn the domain engine into a reproducible persisted workflow.
 On a fresh database, one command sequence loads data, creates a screening run, retrieves a ranked shortlist, and inspects one parcel without manual SQL changes.
 
 Repeating the run with identical inputs produces the same order.
-
-### Interview drill
-
-> Walk me from `POST /screening-runs` to the JSON response.
 
 ---
 
@@ -358,10 +330,6 @@ For each case:
 
 A fixed result yields a valid memo that preserves every score and flag, adds no unsupported factual claim, and fails safely.
 
-### Interview drill
-
-> Why did you use the Messages API now and reserve the Agent SDK for later?
-
 ---
 
 ## Milestone 8 — Deployment, observability, and demo
@@ -397,9 +365,6 @@ From a clean deployed system:
 6. verify the source and configuration versions;
 7. repeat the run and receive the same ordering.
 
-### Interview drill
-
-> What would break first if this expanded from one county to the entire state?
 
 ---
 
