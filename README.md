@@ -1,221 +1,174 @@
 # SiteSignal
 
-**Fail weak solar sites early. Focus diligence where it can still change the answer.**
+**Subtract constraints. Measure usable land. Rank what remains.**
 
-SiteSignal is a deterministic geospatial screening engine for early-stage solar development. Given a project size and a supported county, it ranks candidate parcels, shows how much land remains usable after preliminary constraints, explains the factors behind each score, and recommends the next diligence step.
+SiteSignal is a PostGIS-backed solar parcel screening API. For a reproducible subset of official Oswego County parcel data, it overlays real public constraint geometry, subtracts constrained land, calculates the largest contiguous usable area, and returns reproducible ranked parcel results with source provenance.
 
-The deterministic layer computes every eligibility decision, metric, score, tier, and flag. The language model explains the completed result; it cannot change it.
+> **Status:** The bounded Phase 1 scope is locked. Foundation implementation is in progress.
 
-> **Status:** Phase 1 design is complete. Implementation begins with St. Lawrence County, New York.
+## Why this project exists
 
-## Why this exists
+Early-stage renewable development requires teams to investigate many candidate sites before spending deeply on surveys, engineering, permitting, land control, and interconnection work.
 
-Early-stage renewable development is a portfolio problem. Developers must investigate many possible sites while knowing that most proposed projects will never reach operation.
+SiteSignal addresses one narrow question:
 
-Berkeley Lab's *Queued Up: 2026 Edition* reports that, at the end of 2025:
+> Given a requested project size, which parcels still contain enough contiguous usable land to justify the next diligence step?
 
-- more than 2,060 GW of generation and storage was actively seeking grid interconnection;
-- only 13% of capacity entering queues from 2000–2020 had reached commercial operation;
-- projects completed in 2025 spent a median of more than five years between interconnection request and operation.
+It is a portfolio-triage tool, not a legal determination, wetland delineation, engineering study, permit prediction, interconnection study, or investment recommendation.
 
-Queue data does not prove why any individual project fails. It does show why developers cannot afford to spend deeply on every candidate. SiteSignal addresses one early, inexpensive part of that problem: identify obvious land constraints, rank the survivors, expose uncertainty, and point to the next action that can remove the most risk.
+## What SiteSignal demonstrates
 
-## The question SiteSignal answers
+This project is intentionally focused on technically distinctive backend work:
 
-> For a proposed project of this size, which parcels deserve investigation first, what reduced their usable area, what risks remain, and what should a developer verify next?
-
-SiteSignal is a desktop pre-development screen. It is not a legal determination, engineering study, wetland delineation, interconnection study, survey, permit, or investment recommendation.
+- PostgreSQL and PostGIS;
+- real public geospatial data;
+- CRS-aware area calculations;
+- spatial intersection, union, and subtraction;
+- invalid-geometry handling;
+- largest-contiguous-polygon analysis;
+- deterministic ranking;
+- dataset provenance and idempotent loading;
+- FastAPI, SQLAlchemy 2.0, GeoAlchemy2, and Alembic;
+- focused unit and PostGIS integration tests;
+- deployment to Railway.
 
 ## Phase 1 workflow
 
 ```text
-Project specification
-(requested MW + supported county)
-        |
-        v
-Candidate tax parcels
-        |
-        v
-Preliminary constraint geometry
-(PAD-US classes, NWI, FEMA floodway, excessive slope)
-        |
-        v
+Requested MW
+     |
+     v
+Reproducible Oswego parcel subset
+     |
+     v
+NWI wetlands + FEMA regulatory floodway
+     |
+     v
+PostGIS intersection and union
+     |
+     v
 Constraint subtraction
-        |
-        v
-Largest contiguous usable area
-        |
-        +---- insufficient for requested MW ----> ELIMINATED
-        |
-        v
-Five deterministic suitability scores
-        |
-        v
-Ranked shortlist + tier + conditional flags
-        |
-        v
-Bounded explanation
-(strengths, risks, limitations, next diligence action)
+     |
+     v
+Total usable area + largest contiguous usable area
+     |
+     +---- below required acreage ----> ELIMINATED
+     |
+     v
+Transparent deterministic ranking
+     |
+     v
+Persisted screening run + ordered parcel results
 ```
 
-## The central design decision
+## Core spatial model
 
-SiteSignal does **not** eliminate an entire parcel merely because one constraint touches it.
+SiteSignal does **not** eliminate a whole parcel because one constraint touches it.
 
 Instead:
 
 ```text
 gross parcel geometry
-- configured protected-area exclusions
-- preliminary wetland constraint geometry
-- conservative regulatory-floodway exclusion
-- excessive-slope geometry
+- union of configured constraint geometry
 = potentially usable geometry
 ```
 
-The parcel is eliminated only when its **largest qualifying contiguous usable area** is below the configured acreage required for the requested project size.
+The result may contain several disconnected polygons. SiteSignal measures both:
 
-This matters because real solar projects can avoid, redesign around, mitigate, or investigate constraints that affect only part of a larger site.
+- total usable acreage; and
+- the largest contiguous usable acreage.
 
-## Phase 1 decision model
+A parcel is eligible only when its largest qualifying contiguous area meets the configured land requirement for the requested MW.
 
-### Preliminary constraint geometries
+This distinction matters because several disconnected fragments can add up to enough land while still failing to support one coherent project area.
 
-| Constraint | Initial source | Phase 1 treatment |
-|---|---|---|
-| Protected or conserved land | USGS PAD-US | Subtract only explicitly configured protection classes |
-| Mapped wetland habitat | USFWS National Wetlands Inventory | Preliminary constraint area + field-delineation flag |
-| Regulatory floodway | FEMA NFHL | Conservative SiteSignal exclusion area |
-| Excessive slope | Slope derived from USGS 3DEP elevation | Subtract area above configured threshold |
+## Initial data scope
 
-### Final eligibility test
+Phase 1 uses:
 
-| Test | Meaning |
+| Layer | Purpose |
 |---|---|
-| Largest contiguous usable acreage | Must meet the configured acreage requirement for the requested MW |
+| Reproducible subset of official Oswego County parcels | Candidate parcel geometry |
+| USFWS National Wetlands Inventory | Preliminary mapped-wetland constraint and diligence flag |
+| FEMA National Flood Hazard Layer regulatory floodway | Conservative early-screen constraint |
 
-The acres-per-MW assumption, slope threshold, minimum contiguous patch size, and selected PAD-US classes are versioned configuration—not hidden constants.
+Every load records its source, retrieval time, version or date, checksum, source CRS, normalization rules, and load statistics.
 
-### Five weighted suitability factors
+NWI is a desktop habitat inventory, not a jurisdictional wetland determination. FEMA floodway treatment is a conservative product policy, not a universal legal conclusion.
 
-| Factor | Initial source | What it means |
-|---|---|---|
-| Distance to qualifying substation | Pinned public infrastructure layer | Proximity proxy, not capacity |
-| Distance to qualifying transmission | Pinned public infrastructure layer | Proximity proxy, not a viable route or interconnection result |
-| 1% annual-chance floodplain exposure | FEMA NFHL | Added engineering, permitting, and design risk |
-| Land-cover suitability | USGS National Land Cover Database | Relative suitability of the surviving land |
-| Existing land-use compatibility | NYS ORPTS property-class data | Current-use proxy; explicitly not zoning |
+### Why Oswego County
 
-Every factor returns its raw metric, units, score, source version, and missing-data state.
+Oswego County was selected because official parcel polygons are publicly available, NWI provides downloadable New York wetland data, and FEMA publishes a countywide NFHL package for Oswego (`36075C-NFHL`). The exact parcel subset will be generated by a documented source query defined before scoring and pinned by source date, retrieval time, and checksum. Parcels will not be hand-picked because they produce attractive screening results.
 
-### Conditional and experimental flags
+The county choice is fixed for V1, while the exact municipality or geographic extent remains an ingestion decision until parcel IDs, geometry validity, NWI coverage, and regulatory-floodway coverage pass preflight checks.
 
-Flags remain separate from the composite when the evidence is incomplete or the item requires deeper review:
+## Spatial operations
 
-- desktop wetland screen requires field delineation and jurisdictional review;
-- floodplain development review may be required;
-- municipal zoning is unknown until verified from an authoritative local source;
-- source data is stale, missing, or outside supported coverage;
-- NYISO queue or likely-point-of-interconnection context is experimental until a defensible parcel-to-grid mapping is validated.
+The core workflow is designed around real PostGIS operations such as:
 
-## Output
-
-A parcel result will resemble:
-
-```json
-{
-  "parcel_id": "example",
-  "eligible": true,
-  "requested_mw": 5,
-  "gross_acres": 82.4,
-  "usable_acres": 61.8,
-  "largest_contiguous_usable_acres": 54.2,
-  "constraints": {
-    "nwi_acres": 7.1,
-    "floodway_acres": 0.0,
-    "steep_slope_acres": 4.8,
-    "protected_acres": 0.0
-  },
-  "raw_metrics": {},
-  "subscores": {},
-  "composite_score": 81,
-  "tier": "investigate",
-  "flags": [
-    "desktop_wetland_screen_only",
-    "zoning_unknown"
-  ],
-  "next_diligence_action": "Verify municipal solar law and commission a wetland delineation.",
-  "data_versions": {}
-}
+```text
+ST_Transform
+ST_MakeValid
+ST_Intersects
+ST_Intersection
+ST_UnaryUnion
+ST_Difference
+ST_Dump
+ST_Area
 ```
 
-## Tiers
+Area is calculated only after geometry is transformed into the approved projected analysis CRS.
+
+## Deterministic ranking
+
+Eligible parcels are ranked using a small set of visible, reconstructable metrics:
+
+1. largest contiguous usable acreage relative to required acreage;
+2. usable acreage as a percentage of gross acreage;
+3. largest contiguous acreage as a percentage of total usable acreage;
+4. stable parcel-ID tie-breaking.
+
+Exact score bands, weights, and tier boundaries are versioned configuration. Every result returns the raw values, units, score contribution, configuration version, and source versions.
 
 Phase 1 uses three operational tiers:
 
 - **Investigate** — strong enough to justify the next diligence spend.
-- **Marginal** — potentially viable, but the next identified risk should be tested before broader spend.
-- **Avoid** — surviving parcel is weak relative to alternatives, even if no automatic elimination fired.
+- **Marginal** — potentially viable, but the next identified issue should be tested first.
+- **Avoid** — weak relative to alternatives or ineligible under the configured acreage rule.
 
-The tiers are portfolio-triage recommendations, not permit predictions.
+These tiers are triage recommendations, not permit predictions.
 
-## Validation strategy
+## Example result
 
-SiteSignal uses two kinds of tests.
-
-### Synthetic tests
-
-Controlled geometry fixtures prove exact behavior:
-
-- touching versus overlapping;
-- partial and complete constraint coverage;
-- overlapping constraint layers;
-- invalid geometries;
-- disconnected usable fragments;
-- exact threshold boundaries;
-- missing data;
-- deterministic ranking and tie-breaking.
-
-### Real-project regression cases
-
-Public ORES matters test whether the complete system produces plausible, disciplined output:
-
-| Project | Matter | Use in validation |
-|---|---|---|
-| Rich Road Solar | 22-02969 | Permitted case; must not be falsely declared impossible because constraints affect part of a project area |
-| Cider Solar | 21-01108 | 500 MW permitted cross-county case; exercises parameterized data interfaces |
-| Moss Ridge Solar | 24-03042 | Withdrawn contextual case; withdrawal is not treated as a low-score label |
-| Shepherd's Run Solar | 24-03041 | Active/contested case; exercises floodplain, wetland, local-law, and uncertainty flags |
-
-Real outcomes are never scoring inputs. Permit or withdrawal status does not automatically mean that every associated parcel must score high or low.
-
-## Phase 1 scope
-
-### Included
-
-- one fully supported county: St. Lawrence County, New York;
-- parameterized county ingestion;
-- parcel-level screening;
-- preliminary environmental and terrain constraints;
-- five deterministic suitability factors;
-- ranked shortlist and parcel detail;
-- reproducible data provenance;
-- bounded diligence memo;
-- synthetic and real-project regression tests.
-
-### Deliberately excluded
-
-- multi-parcel assemblage optimization;
-- legal wetland or jurisdictional determinations;
-- detailed solar-array layout;
-- title, easement, and landowner willingness;
-- municipal zoning conclusions without authoritative local data;
-- hosting-capacity or power-flow modeling;
-- CESIR, cluster-study, or interconnection-cost prediction;
-- project finance, offtake, federal policy, and supply-chain risk;
-- permit probability.
-
-New York currently publishes standardized public parcel polygons for a subset of counties under one common schema. County parameterization therefore means the pipeline can support additional counties through validated adapters; it does not mean every county is automatically supported.
+```json
+{
+  "parcel_id": "example-1042",
+  "eligible": true,
+  "requested_mw": 5,
+  "required_usable_acres": 35.0,
+  "gross_acres": 82.4,
+  "constraint_acres": {
+    "nwi_intersection": 11.3,
+    "floodway_intersection": 2.1,
+    "union_constrained": 12.7
+  },
+  "total_usable_acres": 69.7,
+  "largest_contiguous_usable_acres": 54.2,
+  "usable_percent": 84.6,
+  "contiguous_share_of_usable_percent": 77.8,
+  "priority_score": 84,
+  "tier": "investigate",
+  "flags": [
+    "desktop_wetland_screen_only",
+    "floodway_review_required"
+  ],
+  "source_versions": {
+    "parcels": "pinned-manifest-id",
+    "nwi": "pinned-manifest-id",
+    "nfhl": "pinned-manifest-id"
+  }
+}
+```
 
 ## API target
 
@@ -228,143 +181,136 @@ GET  /health
 GET  /ready
 ```
 
-A screening run persists its requested MW, county, configuration version, source versions, candidate counts, timing, and ordered results.
+A screening run persists its requested MW, configuration version, source versions, candidate counts, timing, and ordered results.
 
 ## Architecture
 
 ```text
-FastAPI routers
-      |
-Application services
-      |
-Pure geospatial/domain functions
-      |
-Repository interfaces
-      |
+FastAPI
+   |
+Application service
+   |
 SQLAlchemy 2.0 + GeoAlchemy2
-      |
+   |
 PostgreSQL + PostGIS
 ```
 
-Cross-cutting components:
+Supporting components:
 
 - Alembic migrations;
-- append-only dataset manifests and load runs;
+- dataset manifests and load runs;
 - idempotent source adapters;
-- Pydantic v2 contracts;
-- structured logging and timing;
-- pytest unit, integration, and regression suites;
-- Claude Messages API for the bounded Phase 1 explanation layer.
+- Pydantic v2 request and response contracts;
+- pure ranking and configuration rules;
+- pytest unit and PostGIS integration tests.
 
-## Why the language model does not score
+Packages are added when they own a real responsibility. SiteSignal avoids empty architecture layers created only for appearance.
 
-A screening result should be reproducible from:
+## Validation strategy
 
-1. the same parcel geometry;
-2. the same source-layer versions;
-3. the same configuration;
-4. the same deterministic code.
+### Synthetic geometry tests
 
-The model receives the completed result and may explain:
+Controlled fixtures prove exact behavior for:
 
-- what helped the parcel;
-- what reduced usable acreage;
-- what remains uncertain;
-- what the developer should verify next.
+- boundary touch versus overlap;
+- partial and full coverage;
+- overlapping constraints;
+- holes and multipolygons;
+- disconnected usable fragments;
+- invalid input geometry;
+- exact acreage thresholds;
+- missing source data.
 
-It cannot modify the score, tier, metrics, constraints, flags, or source versions. A model failure does not block access to the deterministic result.
+### Bounded real-data test
 
-## Roadmap
+A reproducible Oswego County parcel subset verifies that the complete ingestion, PostGIS, ranking, persistence, and API workflow behaves plausibly against real public geometry.
 
-### Phase 2 — Grid depth and preliminary design
+The subset rule is fixed before scoring, and the real sample is not used to reverse-engineer a preferred score.
 
-Replace simple proximity with stronger evidence:
+## Optional explanation layer
 
-- utility hosting-capacity data where available;
-- route-to-point-of-interconnection analysis;
-- versioned NYISO queue snapshots and process-regime tagging;
-- basic buildable-area and conceptual layout checks;
-- project archetypes such as environmental-heavy, permitting-heavy, or capacity-constrained;
-- next-step recommendations based on the cheapest action that removes the most uncertainty.
+A bounded diligence memo may be added only after the deterministic system is deployed and tested.
 
-Queue information becomes a score only after parcel-to-electrical-location mapping and outcome validation are defensible.
+The model receives an immutable completed result. It may summarize constraints, flags, limitations, and the next diligence action. It cannot alter geometry, acreage, eligibility, ranking, score, tier, flags, or provenance.
 
-### Phase 3 — Agentic permitting and diligence research
+A model failure must never block access to the deterministic result.
 
-Introduce the Claude Agent SDK for work that genuinely requires tools and iterative research:
+## Phase 1 scope
 
-- retrieve municipal solar laws, zoning ordinances, moratoria, and special-use rules;
-- inspect town-board minutes and ORES/DPS filings;
-- distinguish current rules from superseded versions;
-- extract structured requirements with citations;
-- propose a development plan while preserving human approval;
-- monitor selected sources for material changes.
+### Included
 
-The agent organizes unstructured evidence. Deterministic services continue to own calculations and final structured fields.
+- one supported county;
+- a bounded real parcel dataset;
+- two real vector constraint layers;
+- reproducible data provenance;
+- PostGIS-native constraint subtraction;
+- usable and largest-contiguous acreage;
+- deterministic eligibility, ranking, tiers, and flags;
+- persisted screening runs and parcel results;
+- FastAPI endpoints;
+- focused tests;
+- deployed API;
+- documentation, sample output, and screenshots.
 
-### Phase 4 — Statewide and portfolio scale
+### Deferred
 
-Move from one supported county to portfolio-scale operation:
+- frontend or interactive map;
+- statewide and production-scale ingestion;
+- raster-derived slope;
+- substation, transmission, hosting-capacity, or NYISO scoring;
+- five-factor suitability model;
+- municipal zoning conclusions;
+- ORES regression suite;
+- multi-parcel assemblages;
+- Agent SDK or permitting agent;
+- worker queues and advanced observability.
 
-- validated county adapters and support matrix;
-- multi-parcel assemblage generation;
-- batch screening jobs and worker queues;
-- object storage for raw geospatial sources;
-- pre-clipped county tiles and precomputed overlays;
-- GiST indexes, query-plan analysis, caching, and incremental refreshes;
-- portfolio comparison, saved searches, and reruns when datasets change;
-- observability for ingest failures, stale layers, run duration, and ranking drift.
+## Roadmap after V1
 
-The scaling goal is not merely more traffic. It is processing larger and more varied geospatial data while retaining provenance and reproducibility.
+After the bounded release, future work may add:
 
-### Phase 5 — Continuous development engine
+- more validated parcels and counties;
+- slope, land cover, existing use, and infrastructure proximity;
+- verified municipal-rule research;
+- multi-parcel and preliminary layout analysis;
+- portfolio-scale processing and monitoring.
 
-Expand from a one-time site screen into a continuously updated development system:
-
-- ingest new filings, reports, correspondence, and design revisions;
-- update risk states, next actions, timelines, and budget assumptions;
-- maintain an auditable project history;
-- require human approval for external submissions and material decisions;
-- estimate portfolio-level development exposure rather than pretending every project succeeds;
-- add configurable templates for storage, data-center power, and off-grid microgrid siting.
-
-This phase generalizes the architecture without pretending that one solar score applies unchanged to every infrastructure type.
+These additions are roadmap items, not claims about the Phase 1 implementation.
 
 ## Stack
 
-- Python
+- Python 3.13
 - FastAPI
 - Pydantic v2
 - SQLAlchemy 2.0
 - GeoAlchemy2
-- PostgreSQL + PostGIS
+- PostgreSQL 18 + PostGIS 3.6
 - Alembic
-- GeoPandas / GDAL / Rasterio for ETL
+- GeoPandas / GDAL for bounded geospatial ingestion
 - pytest
-- Claude Messages API in Phase 1
-- Claude Agent SDK in Phase 3
-- Railway deployment target
+- Docker Compose
+- Railway
 
 ## Research basis
 
-The V1 product and roadmap were reviewed against:
+### Product and domain context
 
-- Berkeley Lab, *Queued Up: 2026 Edition*;
-- Paces, *Pre-Development at Scale: Modeling Risk in Early-Stage Solar Development*;
-- Paces, *The One-Person, Billion-Dollar Power Development Company*;
-- Charles Bai, *Why Builders Thrive at Startups*;
-- Offgrid AI, *Fast, Scalable, Clean, and Cheap Enough*;
-- NYS GIS parcel documentation;
-- NYS ORES permit records;
-- FEMA floodplain-management rules;
-- USFWS National Wetlands Inventory limitations;
-- USGS PAD-US documentation;
-- NYS ORPTS property-class documentation.
+- Berkeley Lab, *Queued Up: 2026 Edition*
+- Paces, *Pre-Development at Scale: Modeling Risk in Early-Stage Solar Development*
 
-## Core sentence
+### Data and technical sources
 
-**SiteSignal does not predict that a project will be built. It finds land worth investigating, shows its work, and identifies the next uncertainty that should be removed before more capital is committed.**
+- New York State GIS parcel documentation
+- Oswego County parcel metadata
+- USFWS National Wetlands Inventory documentation and limitations
+- FEMA National Flood Hazard Layer documentation
+- PostGIS documentation
+- official source CRS and metadata documentation
 
 ## Development
 
-- See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow, commit standards, validation steps, pull-request process, and secret-handling rules.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow, commit standards, validation steps, pull-request process, and secret-handling rules.
+
+## Core sentence
+
+**SiteSignal turns real parcel geometry into a reproducible answer about how much contiguous land remains and which candidate deserves investigation first.**

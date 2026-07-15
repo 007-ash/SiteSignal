@@ -1,163 +1,200 @@
-# SiteSignal — Phase 1 Build Outline V1
+# SiteSignal — Phase 1 Build Outline V2
 
 ## Working protocol
 
-For each implementation step:
+For each implementation increment:
 
 1. State the intended behavior in plain language.
 2. Write the first code draft from memory where practical.
-3. Use official source documentation before interpreting fields, classifications, CRS, regulatory meaning, or legal status.
+3. Use official documentation before interpreting source fields, classifications, CRS, regulatory meaning, or deployment behavior.
 4. Review the change PR-style.
-5. Explain it aloud in sixty seconds.
+5. Explain the request or data flow aloud in sixty seconds.
 6. Record material tradeoffs in `decisions.md`.
-7. Commit a coherent increment.
+7. Commit one coherent, validated increment.
 
-The browser-closed drill applies to code recall and architectural explanation. It does not apply to source metadata or regulatory interpretation.
+The browser-closed drill applies to code recall and architectural explanation. It does not apply to source metadata, compatibility research, or regulatory interpretation.
 
-## Definition of done for Phase 1
+## Phase 1 product boundary
 
-A user can submit requested MW and a supported county, receive a reproducible ranked parcel shortlist, inspect constraint subtraction and score components, see source versions and uncertainty flags, and generate a bounded diligence memo.
+Phase 1 is a bounded, technically distinctive vertical slice—not a statewide development platform.
 
-The same request against the same database, configuration, and source versions produces the same ordered result.
+A user submits requested MW for a supported Oswego County dataset. SiteSignal:
+
+1. loads real parcel and constraint geometry into PostGIS;
+2. subtracts configured constraints;
+3. calculates gross, constrained, total usable, and largest contiguous usable acreage;
+4. determines whether the parcel can satisfy the configured land requirement;
+5. ranks the bounded parcel set using transparent deterministic metrics;
+6. persists the run, ordered results, configuration version, and source provenance;
+7. exposes the result through FastAPI.
+
+The same request against the same database, configuration, code, and source versions must produce the same ordered result.
+
+## Deferred from Phase 1
+
+- frontend or map interface;
+- statewide or county-wide production ingestion;
+- raster-derived slope processing;
+- transmission, substation, hosting-capacity, or NYISO scoring;
+- five-factor suitability modeling;
+- municipal zoning conclusions;
+- ORES regression suite;
+- multi-parcel assemblage optimization;
+- Claude Agent SDK or permitting agent;
+- worker queues, object storage, and production-scale ETL;
+- advanced observability and performance optimization.
 
 ---
 
-## Milestone 0 — Reproducible environment and skeleton
+## Milestone 0 — Reproducible foundation
 
 ### Goal
 
-Prove that the application, database, migrations, tests, and target deployment can execute real spatial operations before domain logic begins.
+Prove that the API, PostGIS database, migrations, tests, and target deployment can execute real spatial operations before product logic begins.
 
 ### Tasks
 
-- [ ] Initialize the repository.
-- [ ] Add `README.md`, `decisions.md`, and this outline.
-- [ ] Add `.gitignore`, `.env.example`, and a minimal contribution/workflow note.
-- [ ] Pin the Python version.
+- [x] Initialize the repository.
+- [x] Add `README.md`, `decisions.md`, and this outline.
+- [x] Add `.gitignore`, `.env.example`, and `CONTRIBUTING.md`.
+- [x] Pin the Python development version and compatible runtime range.
 - [ ] Pin compatible PostgreSQL and PostGIS versions.
 - [ ] Create Docker Compose services for the API and PostGIS.
-- [ ] Create the FastAPI application.
-- [ ] Add thin router, application-service, domain, repository, model, and schema packages.
+- [ ] Create the FastAPI application with a focused package structure.
 - [ ] Configure SQLAlchemy 2.0 and GeoAlchemy2.
 - [ ] Add Alembic and create the first migration.
 - [ ] Add `/health` and `/ready`.
 - [ ] Add pytest and a PostGIS integration-test fixture.
-- [ ] Add linting/type-check commands and CI.
-- [ ] Create a first dataset-manifest table and load-run table.
-- [ ] Write `docs/crs-policy.md` with source-metadata, storage, and analysis rules.
+- [ ] Add minimal Ruff, mypy, and test commands.
+- [ ] Add CI that runs the available validation.
+- [ ] Create `dataset_manifest` and `load_run` tables.
+- [ ] Write `docs/crs-policy.md`.
 - [ ] Perform an early Railway/PostGIS deployment proof.
+
+### Initial package shape
+
+Create packages only when they have a real responsibility.
+
+```text
+app/
+├── main.py
+├── api/
+├── db/
+├── models/
+├── repositories/
+├── schemas/
+└── services/
+
+tests/
+```
+
+Add a separate `domain/` package when pure spatial or ranking logic exists.
 
 ### Exit test
 
 From a clean checkout:
 
-1. start the services;
+1. start the API and database;
 2. run migrations;
 3. connect through SQLAlchemy;
 4. execute `SELECT PostGIS_Full_Version();`;
 5. insert two test polygons;
 6. assert `ST_Intersects`;
 7. calculate a known area in a projected CRS;
-8. run the same proof in CI and the target deployment environment.
-
+8. pass `/health`, `/ready`, and the PostGIS integration test;
+9. repeat the proof in CI and the target deployment environment.
 
 ---
 
-## Milestone 1 — Parcel ingestion
+## Milestone 1 — Bounded data ingestion and provenance
 
 ### Goal
 
-Create the first idempotent, versioned geospatial ingestion pipeline using St. Lawrence County parcels.
+Load a reproducible subset of official Oswego County parcels and two real vector constraint layers through idempotent, versioned adapters.
+
+### Initial data scope
+
+- [ ] reproducible subset of official Oswego County parcel polygons;
+- [ ] USFWS National Wetlands Inventory polygons;
+- [ ] FEMA National Flood Hazard Layer regulatory floodway polygons.
+
+The exact parcel source snapshot, selection rule, geographic extent, and constraint-source vintages must be pinned before implementation. The subset must be produced by a documented query defined before scoring—not by hand-picking parcels based on attractive results.
+
+### County preflight
+
+- [ ] Extract an Oswego parcel sample and measure null IDs, duplicate IDs, geometry types, invalid-geometry rate, source CRS, and acreage-field completeness.
+- [ ] Clip NWI data to the candidate extent and confirm a nonzero wetland-polygon count.
+- [ ] Inspect the Oswego County FEMA NFHL package and confirm a nonzero regulatory-floodway count in the candidate extent.
+- [ ] Choose a deterministic subset rule using source fields and an official geographic boundary, with any acreage threshold documented before scoring.
+- [ ] Rerun the subset query and confirm it produces the same ordered source parcel IDs from the same source snapshot.
 
 ### Tasks
 
-- [ ] Confirm official St. Lawrence public polygon availability and license.
-- [ ] Accept county FIPS as the loader parameter.
-- [ ] Save source URL metadata, source date, retrieval time, and checksum.
-- [ ] Validate required columns and source CRS.
-- [ ] Map source fields into a normalized parcel schema.
-- [ ] Reproject according to the CRS policy.
+- [ ] Confirm official availability, license, and source metadata.
+- [ ] Record source URL, source date, retrieval time, checksum, license, and original CRS.
+- [ ] Validate required fields and source geometry types.
+- [ ] Map source fields into normalized parcel and constraint schemas.
+- [ ] Preserve source record IDs and classifications.
+- [ ] Transform geometry according to `docs/crs-policy.md`.
 - [ ] Repair or reject invalid geometry under a documented rule.
-- [ ] Preserve source parcel ID and county FIPS.
-- [ ] Calculate gross acreage in the analysis CRS.
-- [ ] Create spatial indexes.
-- [ ] Make reruns idempotent.
+- [ ] Calculate parcel gross acreage in the analysis CRS.
+- [ ] Create GiST spatial indexes.
+- [ ] Make every load safe to rerun without duplicate records.
 - [ ] Record read, loaded, updated, duplicate, repaired, and rejected counts.
-- [ ] Add an internal parcel-count/sample endpoint only if it helps validate ingestion; do not confuse it with the final product API.
+- [ ] Link each normalized record set to its dataset manifest and load run.
 
 ### Exit test
 
-- the same file can be loaded twice without duplicate parcels;
+- the same bounded source can be loaded twice without duplicate records;
 - accepted geometry is valid and has the expected SRID;
 - gross acreage matches an independently calculated fixture;
-- county query counts are stable;
-- load-run provenance is queryable.
+- parcel and constraint counts remain stable across reruns;
+- the documented subset query reproduces the same parcel IDs from the pinned source snapshot;
+- the selected extent contains nonzero NWI and regulatory-floodway geometry;
+- provenance is queryable from the database.
 
 ---
 
-## Milestone 2 — Constraint-source adapters
+## Milestone 2 — Usable-area spatial engine
 
 ### Goal
 
-Normalize four preliminary constraint sources without yet deciding parcel eligibility.
+Implement the technical core: subtract real constraint geometry and measure the largest contiguous usable area.
 
-### Sources
+### Core PostGIS operations
 
-- [ ] USGS PAD-US;
-- [ ] USFWS National Wetlands Inventory;
-- [ ] FEMA NFHL floodway and 1% annual-chance floodplain as separate classes;
-- [ ] USGS 3DEP elevation used to derive slope.
+The implementation should exercise and explain real uses of:
 
-### Tasks
-
-For each vector source:
-
-- [ ] pin source version and checksum;
-- [ ] preserve source IDs and classifications;
-- [ ] clip to supported extent;
-- [ ] normalize CRS;
-- [ ] repair or reject invalid geometry;
-- [ ] load idempotently;
-- [ ] create spatial indexes;
-- [ ] record ETL statistics and manifest metadata.
-
-For terrain:
-
-- [ ] pin DEM product, date, and resolution;
-- [ ] derive slope with a documented method;
-- [ ] select and record degrees or percent rise;
-- [ ] produce a thresholded steep-slope mask only after the configuration is approved;
-- [ ] checksum the derived output and link it to its source load.
-
-### Exit test
-
-- each source has a completed manifest and load record;
-- floodway and floodplain remain distinguishable;
-- synthetic known geometries intersect the expected classes;
-- slope derivation is reproducible from the same DEM and parameters.
-
----
-
-## Milestone 3 — Usable-area engine
-
-### Goal
-
-Implement the core product: subtract constrained geometry and test the largest contiguous usable area.
+```text
+ST_Transform
+ST_MakeValid
+ST_Intersects
+ST_Intersection
+ST_UnaryUnion
+ST_Difference
+ST_Dump
+ST_Area
+```
 
 ### Tasks
 
-- [ ] Create versioned configuration for selected PAD-US classes.
-- [ ] Create versioned configuration for slope threshold.
-- [ ] Create versioned acres-per-MW and minimum-patch assumptions.
+- [ ] Create versioned acres-per-MW and minimum-patch configuration.
 - [ ] Calculate required usable acreage from requested MW.
-- [ ] Union and clip each relevant constraint to the parcel.
-- [ ] Avoid double-counting overlapping constraint layers.
-- [ ] Subtract configured constraints from parcel geometry.
-- [ ] repair overlay output when necessary under a documented policy.
-- [ ] split multipolygon results into connected components.
-- [ ] calculate gross acres, per-source constrained acres, union-constrained acres, total usable acres, and largest contiguous usable acres.
-- [ ] return eligibility and exact elimination reason.
-- [ ] return uncertainty and diligence flags separately.
+- [ ] Select constraints that intersect each parcel.
+- [ ] Clip each source to the parcel.
+- [ ] Union overlapping constraint geometry before subtraction.
+- [ ] Avoid double-counting overlap between constraint sources.
+- [ ] Subtract the combined constraint geometry from the parcel.
+- [ ] Repair overlay output only under the documented geometry policy.
+- [ ] Split multipolygon output into connected components.
+- [ ] Calculate gross acres.
+- [ ] Calculate per-source intersected acres.
+- [ ] Calculate union-constrained acres.
+- [ ] Calculate total usable acres.
+- [ ] Calculate largest contiguous usable acres.
+- [ ] Calculate fragmentation ratio.
+- [ ] Return eligibility and an exact elimination reason.
+- [ ] Return uncertainty and diligence flags separately from eligibility.
 
 ### Synthetic tests
 
@@ -171,93 +208,33 @@ Implement the core product: subtract constrained geometry and test the largest c
 - [ ] multipolygon parcel;
 - [ ] exact acreage threshold;
 - [ ] invalid input geometry;
-- [ ] missing source layer.
+- [ ] missing constraint source.
 
 ### Exit test
 
-A hand-calculated synthetic parcel produces the expected constrained areas, largest contiguous component, and eligibility result within an agreed numerical tolerance.
+A hand-calculated synthetic parcel produces the expected constrained acreage, total usable acreage, largest connected component, fragmentation ratio, and eligibility result within an agreed numerical tolerance.
 
 ---
 
-## Milestone 4 — Suitability-source adapters
+## Milestone 3 — Deterministic ranking and persisted API
 
 ### Goal
 
-Load the sources required for five transparent Phase 1 suitability factors.
+Turn the spatial engine into a reproducible screening workflow and ranked API result.
 
-### Sources
+### Ranking inputs
 
-- [ ] pinned public substation data;
-- [ ] pinned public transmission-line data;
-- [ ] FEMA 1% annual-chance floodplain;
-- [ ] USGS NLCD;
-- [ ] NYS ORPTS property-class attributes.
+The initial ranking should remain small and reconstructable:
 
-### Tasks
+1. eligibility;
+2. largest contiguous usable acreage relative to required acreage;
+3. usable acreage as a percentage of gross acreage;
+4. largest contiguous acreage as a percentage of total usable acreage;
+5. stable parcel-ID tie-breaking.
 
-- [ ] document infrastructure-layer age, license, completeness, and limitations;
-- [ ] define qualifying substation and transmission classes;
-- [ ] define the transmission-voltage filter;
-- [ ] preserve raw classifications;
-- [ ] normalize vector and raster sources;
-- [ ] define floodplain exposure calculation on usable geometry;
-- [ ] map NLCD classes to a versioned suitability table;
-- [ ] map property classes to a versioned existing-land-use table;
-- [ ] return `zoning_status = unknown` unless a verified zoning source exists.
+Exact score bands and weights must be versioned and tested before release.
 
-### Exit test
-
-For a synthetic parcel and small real sample, each raw metric can be calculated independently and traced to one source version.
----
-
-## Milestone 5 — Deterministic scoring and ranking
-
-### Goal
-
-Convert raw metrics into auditable scores without hiding uncertainty.
-
-### Five sub-scores
-
-1. qualifying-substation distance;
-2. qualifying-transmission distance;
-3. floodplain exposure;
-4. land-cover suitability;
-5. existing land-use compatibility.
-
-### Tasks
-
-- [ ] define raw metric, units, direction, and missing-data behavior for each factor;
-- [ ] define lower-inclusive, upper-exclusive score bands;
-- [ ] return raw value and score together;
-- [ ] validate that weights sum to 1.0;
-- [ ] calculate the composite;
-- [ ] define Investigate, Marginal, and Avoid bands;
-- [ ] add deterministic secondary sorting;
-- [ ] retain configuration and data versions with each result;
-- [ ] create a recommended next diligence action from deterministic rules before involving the LLM.
-
-### Tests
-
-- [ ] every band boundary;
-- [ ] every tier boundary;
-- [ ] missing and stale data;
-- [ ] exact composite arithmetic;
-- [ ] tie-breaking;
-- [ ] deterministic next-action selection.
-
-### Exit test
-
-A table of controlled fixtures reproduces every raw metric, score, composite, tier, and next action exactly.
-
----
-
-## Milestone 6 — Screening workflow and API
-
-### Goal
-
-Turn the domain engine into a reproducible persisted workflow.
-
-### API
+### API target
 
 - [ ] `POST /screening-runs`
 - [ ] `GET /screening-runs/{run_id}`
@@ -268,144 +245,95 @@ Turn the domain engine into a reproducible persisted workflow.
 
 ### Tasks
 
-- [ ] validate requested MW;
-- [ ] validate county support;
-- [ ] verify required source loads and freshness;
-- [ ] persist run configuration and data versions;
-- [ ] select candidate parcels;
-- [ ] apply eligibility engine;
-- [ ] score survivors;
-- [ ] rank results;
-- [ ] persist timing and candidate counts;
-- [ ] paginate shortlist results;
-- [ ] return clear errors for unsupported county, missing source, and stale-data policy failures.
+- [ ] Validate requested MW.
+- [ ] Validate the supported dataset and county.
+- [ ] Verify required source loads.
+- [ ] Persist requested MW, configuration version, and source versions.
+- [ ] Select the bounded candidate parcel set.
+- [ ] Run the usable-area engine.
+- [ ] Calculate transparent ranking metrics.
+- [ ] Return each raw metric with units and score contribution.
+- [ ] Define simple Investigate, Marginal, and Avoid tiers.
+- [ ] Add deterministic secondary sorting.
+- [ ] Persist ordered parcel results.
+- [ ] Persist timing and candidate counts.
+- [ ] Return clear errors for unsupported input or missing source data.
+- [ ] Prove that identical inputs produce identical ordering.
 
 ### Exit test
 
-On a fresh database, one command sequence loads data, creates a screening run, retrieves a ranked shortlist, and inspects one parcel without manual SQL changes.
-
-Repeating the run with identical inputs produces the same order.
+On a fresh database, one command sequence loads the bounded data, creates a screening run, retrieves an ordered shortlist, and inspects one parcel without manual SQL changes.
 
 ---
 
-## Milestone 7 — Validation and explanation
+## Milestone 4 — Validate, deploy, document, and freeze
 
 ### Goal
 
-Prove exact behavior with synthetic tests, test plausibility with public cases, and add a bounded narrative layer.
+Ship a small system that can be cold-demonstrated, inspected, and defended in an interview.
 
-### Real-project regressions
+### Required tasks
 
-- [ ] Rich Road Solar, Matter 22-02969;
-- [ ] Cider Solar, Matter 21-01108;
-- [ ] Moss Ridge Solar, Matter 24-03042;
-- [ ] Shepherd's Run Solar, Matter 24-03041.
+- [ ] Add focused unit tests for ranking and configuration boundaries.
+- [ ] Add PostGIS integration tests for the spatial workflow.
+- [ ] Run one reproducible bounded real-data screening.
+- [ ] Deploy FastAPI and PostGIS to Railway.
+- [ ] Run Alembic migrations during deployment.
+- [ ] Load the bounded demo dataset.
+- [ ] Configure health and readiness checks.
+- [ ] Add structured logs and screening duration.
+- [ ] Document exact source versions and refresh steps.
+- [ ] Add one-command local startup.
+- [ ] Add one-command test execution.
+- [ ] Add a sample request and response to the README.
+- [ ] Add architecture and request-flow diagrams.
+- [ ] Add screenshots of the deployed API and result.
+- [ ] Document known limitations.
+- [ ] Rehearse the architecture, request flow, CRS policy, and spatial-query choices.
+- [ ] Freeze Phase 1 after blocking defects are resolved.
 
-For each case:
+### Optional only after the deterministic core is deployed
 
-- [ ] document exact geometry source;
-- [ ] document source versions;
-- [ ] identify official-record constraints relevant to SiteSignal;
-- [ ] write case-specific assertions;
-- [ ] avoid automatic permitted=high or withdrawn=low labels.
-
-### Explanation layer
-
-- [ ] define immutable `ScreeningResult`;
-- [ ] send the completed result to the Claude Messages API;
-- [ ] require structured output;
-- [ ] include summary, strengths, constraints, flags, limitations, and next action;
-- [ ] prohibit unsupported permit conclusions;
-- [ ] verify all numbers against the input object;
-- [ ] keep deterministic results available if the model fails;
-- [ ] write schema and adversarial tests.
-
-### Agent preparation
-
-- [ ] whiteboard the raw agent loop;
-- [ ] document why Phase 1 is not agentic;
-- [ ] create the Phase 3 ordinance-research tool contract without implementing the full agent yet.
+- [ ] Generate a bounded diligence memo from an immutable result.
+- [ ] Require structured output.
+- [ ] Verify every number against the input result.
+- [ ] Preserve deterministic results when the model fails.
+- [ ] Prohibit permit, legal, engineering, or investment conclusions.
 
 ### Exit test
 
-A fixed result yields a valid memo that preserves every score and flag, adds no unsupported factual claim, and fails safely.
+From the deployed system:
 
----
-
-## Milestone 8 — Deployment, observability, and demo
-
-### Goal
-
-Ship a small, honest system that can be cold-demonstrated and inspected.
-
-### Tasks
-
-- [ ] deploy FastAPI and PostGIS to Railway;
-- [ ] run Alembic migrations during deployment;
-- [ ] load a bounded demo dataset;
-- [ ] configure health and readiness checks;
-- [ ] add structured logs;
-- [ ] record screening duration and stage timings;
-- [ ] inspect query plans for major spatial queries;
-- [ ] document source versions and refresh procedure;
-- [ ] finalize README and decisions;
-- [ ] add one-command local startup;
-- [ ] add one-command test execution;
-- [ ] expose API documentation or a minimal phone-friendly interface.
-
-### Exit test
-
-From a clean deployed system:
-
-1. submit requested MW and county;
+1. submit requested MW;
 2. receive a screening-run ID;
 3. retrieve a ranked shortlist;
-4. inspect usable-area math and sub-scores;
-5. generate a diligence memo;
-6. verify the source and configuration versions;
-7. repeat the run and receive the same ordering.
-
+4. inspect gross, constrained, usable, and largest contiguous acreage;
+5. inspect ranking inputs, score, tier, flags, and provenance;
+6. repeat the run and receive the same ordering.
 
 ---
 
-# Product roadmap after Phase 1
+# Roadmap after the bounded V1
 
-## Phase 2 — Grid depth and preliminary design
+## Next spatial depth
 
-- hosting-capacity sources where available;
-- route-to-POI analysis;
-- append-only NYISO queue snapshots;
-- process-regime and cluster-cohort tagging;
-- basic site design and access-path constraints;
-- risk archetypes;
-- evidence-based next-step sequencing.
+- add one infrastructure-proximity factor only after a defensible source is pinned;
+- add slope from a pinned elevation source;
+- add land-cover and existing-use inputs;
+- expand the validated parcel set.
 
-## Phase 3 — Agentic permitting research
+## Broader product depth
 
-- Claude Agent SDK;
-- municipal ordinance and moratorium retrieval;
-- town-minute and ORES/DPS research;
-- source citation and version comparison;
-- structured permitting requirements;
-- human-approved development plans;
-- monitored source changes.
+- verified municipal ordinance and zoning research;
+- NYISO and point-of-interconnection context;
+- multi-parcel assemblage analysis;
+- project-layout and access constraints;
+- agentic diligence research with citations and human approval.
 
-## Phase 4 — Statewide and portfolio scale
+## Scale
 
-- county support matrix and adapters;
-- multi-parcel assemblages;
+- validated county adapters;
 - batch jobs and workers;
 - object storage and tiled source processing;
-- precomputed overlays and caches;
-- GiST/query-plan optimization;
-- portfolio reruns and ranking-drift monitoring;
-- operational observability.
-
-## Phase 5 — Continuous development engine
-
-- project-event ingestion;
-- evolving risk, timeline, budget, and next-action state;
-- audit history;
-- human approval gates;
-- portfolio exposure and expected-outcome modeling;
-- configurable project templates for solar, storage, data-center power, and off-grid microgrids.
+- precomputed overlays and caching;
+- portfolio reruns, monitoring, and ranking-drift detection.
