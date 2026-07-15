@@ -104,6 +104,10 @@ These decisions are written to be defended aloud. They separate source facts, pr
 
 43. **Chose human approval for external submissions and material state changes over autonomous filing** because an auditable development assistant should accelerate expert work without silently committing legal, financial, or permitting actions.
 
+## Runtime and packaging
+
+44. **Chose separate SiteSignal release and Python runtime declarations over using one version number for both** because `project.version` identifies the SiteSignal application release (`0.1.0`), while `requires-python` defines the range of Python interpreters that may install and run that release (`>=3.13,<3.14`). The exact local development interpreter is pinned separately in `.python-version` (`3.13.0`) because SiteSignal releases and Python releases evolve independently.
+
 ## Open configuration decisions
 
 These items must be resolved through official metadata review, domain research, and sensitivity testing before the associated scorer is locked:

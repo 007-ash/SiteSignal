@@ -1,0 +1,12 @@
+[build-system]
+# Minimum requirements for the build system to execute.
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sitesignal"
+version = "0.1.0"
+description = "Parcel screening and early-stage diligence engine for renewable energy development."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = []
