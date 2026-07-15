@@ -364,3 +364,7 @@ The V1 product and roadmap were reviewed against:
 ## Core sentence
 
 **SiteSignal does not predict that a project will be built. It finds land worth investigating, shows its work, and identifies the next uncertainty that should be removed before more capital is committed.**
+
+## Development
+
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow, commit standards, validation steps, pull-request process, and secret-handling rules.
