@@ -14,4 +14,6 @@ dependencies = [
     "sqlalchemy==2.0.51",
     "psycopg[binary]==3.3.4",
     "pydantic-settings==2.14.2",
+    "alembic==1.18.5",
+    "geoalchemy2==0.20.0",
 ]
