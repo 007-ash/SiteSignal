@@ -67,9 +67,6 @@ Prove that the API, PostGIS database, migrations, tests, and target deployment c
 - [x] Add pytest and a PostGIS integration-test fixture.
 - [x] Add minimal Ruff, mypy, and test commands.
 - [x] Add CI that runs the available validation.
-- [ ] Create `dataset_manifest` and `load_run` tables.
-- [ ] Write `docs/crs-policy.md`.
-- [ ] Perform an early Railway/PostGIS deployment proof.
 
 ### Initial package shape
 
@@ -142,6 +139,8 @@ The exact parcel source snapshot, selection rule, geographic extent, and constra
 - [ ] Make every load safe to rerun without duplicate records.
 - [ ] Record read, loaded, updated, duplicate, repaired, and rejected counts.
 - [ ] Link each normalized record set to its dataset manifest and load run.
+- [ ] Create `dataset_manifest` and `load_run` tables.
+- [ ] Write `docs/crs-policy.md`.
 
 ### Exit test
 
@@ -291,6 +290,7 @@ Ship a small system that can be cold-demonstrated, inspected, and defended in an
 - [ ] Document known limitations.
 - [ ] Rehearse the architecture, request flow, CRS policy, and spatial-query choices.
 - [ ] Freeze Phase 1 after blocking defects are resolved.
+- [ ] Perform an early Railway/PostGIS deployment proof.
 
 ### Optional only after the deterministic core is deployed
 

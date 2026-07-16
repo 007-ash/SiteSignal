@@ -1,6 +1,6 @@
 # Contributing to SiteSignal
 
-SiteSignal is being implemented milestone by milestone from `PHASE_1_OUTLINE.md`. Keeping changes small, reviewable, and aligned with the current milestone.
+SiteSignal is being implemented milestone by milestone from `OUTLINE/PHASE_1_OUTLINE.md`. Keeping changes small, reviewable, and aligned with the current milestone.
 
 ## Python runtime
 
