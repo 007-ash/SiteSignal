@@ -110,6 +110,8 @@ This document supersedes the original broad Phase 1 plan. The previous decisions
 
 43. Use Pydantic's mypy plugin because `Settings()` loads required values such as `DATABASE_URL` from environment configuration at runtime. Do not add fake defaults solely to satisfy static type checking; required configuration should continue to fail fast when missing.
 
+44. For the bounded single-instance V1, the API container runs alembic upgrade head before starting Uvicorn. This guarantees that the database schema is current at startup. A multi-instance deployment would move migrations into a separate release step to avoid concurrent migration attempts.
+
 ## Open configuration decisions
 
 These items must be resolved through official metadata review, domain research, or controlled fixtures before their associated behavior is locked:

@@ -32,6 +32,37 @@ This project is intentionally focused on technically distinctive backend work:
 - focused unit and PostGIS integration tests;
 - deployment to Railway.
 
+## Local Development
+
+Prerequisites
+- Docker Desktop
+- Python 3.13
+
+Setup
+1. Copy .env.example to .env
+2. Replace the password placeholder
+3. Run docker compose up --build -d
+
+Verification
+- GET /health
+- GET /ready
+- Swagger at /docs
+
+Quality checks
+- Ruff
+- mypy
+- unit tests
+- PostGIS integration tests
+
+/health confirms that the API process is running.
+/ready confirms that the API can reach PostgreSQL/PostGIS.
+
+```text
+Docker Compose
+├── FastAPI/Uvicorn API container
+└── PostgreSQL 18 + PostGIS 3.6 database container
+```
+
 ## Phase 1 workflow
 
 ```text
