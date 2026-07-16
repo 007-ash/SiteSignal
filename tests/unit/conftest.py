@@ -4,9 +4,7 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-os.environ["DATABASE_URL"] = (
-    "postgresql+psycopg://test:test@127.0.0.1:1/test"
-)
+os.environ["DATABASE_URL"] = "postgresql+psycopg://test:test@127.0.0.1:1/test"
 
 
 @pytest.fixture

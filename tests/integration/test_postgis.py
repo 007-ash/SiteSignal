@@ -11,9 +11,7 @@ from app.database import engine
 def test_postgis_support_and_area_calculation() -> None:
     with engine.connect() as connection:
         # Ensure PostGIS is installed and available on the database.
-        version = connection.execute(
-            text("SELECT postgis_version()")
-        ).scalar_one()
+        version = connection.execute(text("SELECT postgis_version()")).scalar_one()
 
         # Calculate the area of a 10x10 polygon using a PostGIS geometry function.
         area = connection.execute(
