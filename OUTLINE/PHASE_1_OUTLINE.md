@@ -156,10 +156,11 @@ Milestone 1 does **not** ingest wetlands or floodway geometry. Those constraint 
 
 ### Remaining tasks
 
-- [ ] Lock one municipality-sized extraction boundary.
-  - Candidate: New Haven.
-  - Confirm that it has nonzero NWI and FEMA coverage before locking it.
-  - If it fails that check, choose another municipality and document the reason.
+- [x] Lock one municipality-sized extraction boundary.
+  - Municipality: New Haven, Oswego County.
+  - Query: `MUNI = 'New Haven'`.
+  - Published parcel count: 1,636.
+  - Preflight confirmed nonzero NWI and FEMA regulatory-floodway coverage.
 - [ ] Record the exact ArcGIS query used for the subset.
 - [ ] Rerun the query and confirm the same ordered `GlobalID` values are returned.
 - [ ] Create the normalized `Parcel` model and Alembic migration.

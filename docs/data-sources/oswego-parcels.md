@@ -60,11 +60,27 @@ produced them.
 
 ## V1 extraction boundary
 
-The exact V1 municipality or geographic subset remains unresolved until parcel
-counts are compared with NWI wetland and FEMA regulatory-floodway coverage.
+SiteSignal V1 uses parcels in New Haven, Oswego County, New York.
 
-The final rule must be reproducible from source attributes or a documented
-spatial boundary. It must not depend on manually selecting parcels in a map.
+The deterministic source query is:
+
+`MUNI = 'New Haven'`
+
+The inspected parcel service returns 1,636 records for this query.
+
+New Haven was selected because it is a manageable municipality-sized parcel
+set and its parcel extent intersects real constraint data:
+
+- 662 USFWS National Wetlands Inventory polygons;
+- 3 FEMA NFHL regulatory-floodway polygons.
+
+The constraint counts are preflight results based on the parcel bounding
+extent. Milestone 2 will retrieve and clip constraint geometry to the actual
+bounded analysis area.
+
+The parcel subset must be ordered by `GlobalID` when reproducibility is being
+verified. No parcels are manually selected or removed based on screening
+results.
 
 ## Known limitations
 
