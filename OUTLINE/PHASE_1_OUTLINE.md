@@ -1,4 +1,4 @@
-# SiteSignal — Phase 1 Build Outline V2
+# SiteSignal — Abridged Phase 1 Build Outline V3
 
 ## Working protocol
 
@@ -14,16 +14,27 @@ For each implementation increment:
 
 The browser-closed drill applies to code recall and architectural explanation. It does not apply to source metadata, compatibility research, or regulatory interpretation.
 
+## Abridged delivery rule
+
+Phase 1 must remain a small, complete vertical slice.
+
+- Build only what is required by the current milestone exit test.
+- Prefer explicit loaders for the three supported datasets over a generalized ingestion framework.
+- Support one municipality-sized subset inside Oswego County.
+- Reject and record invalid source geometry instead of building a general repair engine.
+- Defer expansion until the bounded workflow is deployed and documented.
+- Do not add new milestone requirements unless they are necessary to pass the current exit test.
+
 ## Phase 1 product boundary
 
 Phase 1 is a bounded, technically distinctive vertical slice—not a statewide development platform.
 
-A user submits requested MW for a supported Oswego County dataset. SiteSignal:
+A user submits requested MW for one supported Oswego County municipality dataset. SiteSignal:
 
-1. loads real parcel and constraint geometry into PostGIS;
+1. loads real parcel, wetland, and regulatory-floodway geometry into PostGIS;
 2. subtracts configured constraints;
 3. calculates gross, constrained, total usable, and largest contiguous usable acreage;
-4. determines whether the parcel can satisfy the configured land requirement;
+4. determines whether each parcel can satisfy the configured land requirement;
 5. ranks the bounded parcel set using transparent deterministic metrics;
 6. persists the run, ordered results, configuration version, and source provenance;
 7. exposes the result through FastAPI.
@@ -33,7 +44,9 @@ The same request against the same database, configuration, code, and source vers
 ## Deferred from Phase 1
 
 - frontend or map interface;
-- statewide or county-wide production ingestion;
+- countywide or statewide production ingestion;
+- reusable multi-county adapter framework;
+- automatic geometry-repair engine;
 - raster-derived slope processing;
 - transmission, substation, hosting-capacity, or NYISO scoring;
 - five-factor suitability modeling;
@@ -67,6 +80,7 @@ Prove that the API, PostGIS database, migrations, tests, and target deployment c
 - [x] Add pytest and a PostGIS integration-test fixture.
 - [x] Add minimal Ruff, mypy, and test commands.
 - [x] Add CI that runs the available validation.
+- [x] Complete and merge the Milestone 0 branch.
 
 ### Initial package shape
 
@@ -99,74 +113,129 @@ From a clean checkout:
 6. assert `ST_Intersects`;
 7. calculate a known area in a projected CRS;
 8. pass `/health`, `/ready`, and the PostGIS integration test;
-9. repeat the proof in CI and the target deployment environment.
+9. repeat the proof in CI.
+
+**Status: complete.**
 
 ---
 
-## Milestone 1 — Bounded data ingestion and provenance
+## Milestone 1 — Bounded parcel ingestion and provenance
 
 ### Goal
 
-Load a reproducible subset of official Oswego County parcels and two real vector constraint layers through idempotent, versioned adapters.
+Load one reproducible municipality-sized subset of official Oswego County parcel polygons into PostGIS with provenance, validation, reprojection, calculated acreage, and idempotent reload behavior.
 
-### Initial data scope
+Milestone 1 does **not** ingest wetlands or floodway geometry. Those constraint layers move to Milestone 2, where they are loaded directly for the usable-area calculation that consumes them.
 
-- [ ] reproducible subset of official Oswego County parcel polygons;
-- [ ] USFWS National Wetlands Inventory polygons;
-- [ ] FEMA National Flood Hazard Layer regulatory floodway polygons.
+### Locked source decisions
 
-The exact parcel source snapshot, selection rule, geographic extent, and constraint-source vintages must be pinned before implementation. The subset must be produced by a documented query defined before scoring—not by hand-picking parcels based on attractive results.
+- [x] County: Oswego County, New York.
+- [x] Official dataset: Oswego County Active Tax Parcels.
+- [x] ArcGIS item ID: `b15088eeef32423b890e4e50b03775d6`.
+- [x] Layer: `parcelsActive`.
+- [x] Source geometry type: polygon.
+- [x] Source CRS: EPSG:2261.
+- [x] Analysis CRS: EPSG:6535.
+- [x] Source-feature uniqueness key: `GlobalID`.
+- [x] County business identifier: `rpsjoin`, duplicates allowed.
+- [x] Source `ACRES` is QA-only; `gross_acres` is calculated from normalized geometry.
+- [x] Owner, mailing, bank, escrow, and deed fields are excluded.
 
-### County preflight
+### Completed preflight and contracts
 
-- [ ] Extract an Oswego parcel sample and measure null IDs, duplicate IDs, geometry types, invalid-geometry rate, source CRS, and acreage-field completeness.
-- [ ] Clip NWI data to the candidate extent and confirm a nonzero wetland-polygon count.
-- [ ] Inspect the Oswego County FEMA NFHL package and confirm a nonzero regulatory-floodway count in the candidate extent.
-- [ ] Choose a deterministic subset rule using source fields and an official geographic boundary, with any acreage threshold documented before scoring.
-- [ ] Rerun the subset query and confirm it produces the same ordered source parcel IDs from the same source snapshot.
+- [x] Inspect the official service and published schema.
+- [x] Measure total rows, missing identifiers, duplicate identifiers, source CRS, municipality counts, taxable-status values, and acreage completeness.
+- [x] Confirm 59,510 distinct, non-null `GlobalID` values across 59,510 records.
+- [x] Confirm `rpsjoin` is not unique and document repeated identifier groups.
+- [x] Document the parcel source and acquisition policy.
+- [x] Document the source-to-SiteSignal field map.
+- [x] Document privacy exclusions and ingestion rules.
+- [x] Create `dataset_manifest` and `load_run` models and migration.
+- [x] Write `docs/crs-policy.md`.
+- [x] Protect Alembic autogeneration from PostGIS-owned tables.
 
-### Tasks
+### Remaining tasks
 
-- [ ] Confirm official availability, license, and source metadata.
-- [ ] Record source URL, source date, retrieval time, checksum, license, and original CRS.
-- [ ] Validate required fields and source geometry types.
-- [ ] Map source fields into normalized parcel and constraint schemas.
-- [ ] Preserve source record IDs and classifications.
-- [ ] Transform geometry according to `docs/crs-policy.md`.
-- [ ] Repair or reject invalid geometry under a documented rule.
-- [ ] Calculate parcel gross acreage in the analysis CRS.
-- [ ] Create GiST spatial indexes.
-- [ ] Make every load safe to rerun without duplicate records.
-- [ ] Record read, loaded, updated, duplicate, repaired, and rejected counts.
-- [ ] Link each normalized record set to its dataset manifest and load run.
-- [ ] Create `dataset_manifest` and `load_run` tables.
-- [ ] Write `docs/crs-policy.md`.
+- [ ] Lock one municipality-sized extraction boundary.
+  - Candidate: New Haven.
+  - Confirm that it has nonzero NWI and FEMA coverage before locking it.
+  - If it fails that check, choose another municipality and document the reason.
+- [ ] Record the exact ArcGIS query used for the subset.
+- [ ] Rerun the query and confirm the same ordered `GlobalID` values are returned.
+- [ ] Create the normalized `Parcel` model and Alembic migration.
+- [ ] Add a unique constraint on `source_global_id`.
+- [ ] Add a GiST index on parcel geometry.
+- [ ] Link each parcel to its dataset manifest or load run.
+- [ ] Build one scripted ArcGIS extractor for the selected municipality.
+- [ ] Request only the approved fields and geometry.
+- [ ] Handle the service's 2,000-record response limit.
+- [ ] Transform EPSG:2261 geometry to EPSG:6535.
+- [ ] Validate required fields and polygon geometry.
+- [ ] Reject or quarantine missing required values and invalid geometry.
+- [ ] Do not build an automatic geometry-repair engine.
+- [ ] Calculate `gross_acres` from geometry in EPSG:6535.
+- [ ] Insert or update records using `GlobalID`.
+- [ ] Record read, accepted, rejected, and final-status counts.
+- [ ] Make the load safe to rerun without duplicate parcel records.
+- [ ] Add focused transformation, validation, acreage, idempotency, SRID, and row-count tests.
+- [ ] Add one documented local ingestion command.
 
 ### Exit test
 
-- the same bounded source can be loaded twice without duplicate records;
-- accepted geometry is valid and has the expected SRID;
-- gross acreage matches an independently calculated fixture;
-- parcel and constraint counts remain stable across reruns;
-- the documented subset query reproduces the same parcel IDs from the pinned source snapshot;
-- the selected extent contains nonzero NWI and regulatory-floodway geometry;
-- provenance is queryable from the database.
+From a migrated local database:
+
+1. run one documented command;
+2. create a dataset-manifest and load-run record;
+3. retrieve the deterministic municipality subset;
+4. load accepted parcels into PostGIS;
+5. record rejected parcels or counts visibly;
+6. confirm every accepted geometry is valid and uses EPSG:6535;
+7. confirm calculated gross acreage against a known fixture;
+8. rerun the same command;
+9. confirm the final parcel count and unique `GlobalID` set remain unchanged;
+10. pass Ruff, mypy, pytest, and Alembic checks.
 
 ---
 
-## Milestone 2 — Usable-area spatial engine
+## Milestone 2 — Constraint ingestion and usable-area engine
 
 ### Goal
 
-Implement the technical core: subtract real constraint geometry and measure the largest contiguous usable area.
+Load only the USFWS wetlands and FEMA regulatory-floodway features needed for the selected municipality, subtract them from parcel geometry, and calculate total and contiguous usable acreage.
 
-### Core PostGIS operations
+### Initial constraint scope
 
-The implementation should exercise and explain real uses of:
+- [ ] USFWS National Wetlands Inventory polygons intersecting the selected municipality.
+- [ ] FEMA National Flood Hazard Layer regulatory-floodway polygons intersecting the selected municipality.
+
+No countywide or nationwide constraint warehouse is required.
+
+### Constraint preflight
+
+- [ ] Pin the official NWI source URL, source vintage, license, and original CRS.
+- [ ] Pin the official FEMA NFHL source URL, source vintage, license, and original CRS.
+- [ ] Confirm a nonzero NWI polygon count in the selected municipality.
+- [ ] Confirm a nonzero FEMA regulatory-floodway polygon count in the selected municipality.
+- [ ] Document the exact extraction or clipping rules.
+- [ ] Record manifests and load runs for both constraint sources.
+
+### Minimal constraint ingestion
+
+- [ ] Create only the constraint schema required by the spatial engine.
+- [ ] Preserve source record IDs and source classifications.
+- [ ] Transform accepted geometry into EPSG:6535.
+- [ ] Add GiST spatial indexes.
+- [ ] Reject and record invalid source geometry.
+- [ ] Make each constraint load safe to rerun.
+- [ ] Confirm stable feature counts across reruns.
+
+### Core spatial operations
+
+The implementation should exercise and explain focused uses of:
 
 ```text
 ST_Transform
-ST_MakeValid
+ST_IsValid
 ST_Intersects
 ST_Intersection
 ST_UnaryUnion
@@ -175,16 +244,17 @@ ST_Dump
 ST_Area
 ```
 
-### Tasks
+Use `ST_MakeValid` only if a narrow, documented overlay-output rule becomes necessary. Do not build a general repair framework.
+
+### Spatial-engine tasks
 
 - [ ] Create versioned acres-per-MW and minimum-patch configuration.
 - [ ] Calculate required usable acreage from requested MW.
 - [ ] Select constraints that intersect each parcel.
-- [ ] Clip each source to the parcel.
+- [ ] Clip each constraint source to the parcel.
 - [ ] Union overlapping constraint geometry before subtraction.
-- [ ] Avoid double-counting overlap between constraint sources.
+- [ ] Avoid double-counting overlap between wetlands and floodway.
 - [ ] Subtract the combined constraint geometry from the parcel.
-- [ ] Repair overlay output only under the documented geometry policy.
 - [ ] Split multipolygon output into connected components.
 - [ ] Calculate gross acres.
 - [ ] Calculate per-source intersected acres.
@@ -195,16 +265,13 @@ ST_Area
 - [ ] Return eligibility and an exact elimination reason.
 - [ ] Return uncertainty and diligence flags separately from eligibility.
 
-### Synthetic tests
+### Focused synthetic tests
 
 - [ ] no overlap;
-- [ ] boundary touch only;
 - [ ] partial overlap;
 - [ ] full coverage;
 - [ ] overlapping constraints;
-- [ ] hole inside a parcel;
 - [ ] disconnected leftover fragments;
-- [ ] multipolygon parcel;
 - [ ] exact acreage threshold;
 - [ ] invalid input geometry;
 - [ ] missing constraint source.
@@ -213,17 +280,19 @@ ST_Area
 
 A hand-calculated synthetic parcel produces the expected constrained acreage, total usable acreage, largest connected component, fragmentation ratio, and eligibility result within an agreed numerical tolerance.
 
+At least one real parcel in the selected municipality runs through the same engine using real NWI and FEMA geometry.
+
 ---
 
 ## Milestone 3 — Deterministic ranking and persisted API
 
 ### Goal
 
-Turn the spatial engine into a reproducible screening workflow and ranked API result.
+Turn the bounded spatial engine into a reproducible screening workflow and ranked API result.
 
 ### Ranking inputs
 
-The initial ranking should remain small and reconstructable:
+Keep the initial ranking small and reconstructable:
 
 1. eligibility;
 2. largest contiguous usable acreage relative to required acreage;
@@ -235,18 +304,25 @@ Exact score bands and weights must be versioned and tested before release.
 
 ### API target
 
+Required:
+
 - [ ] `POST /screening-runs`
 - [ ] `GET /screening-runs/{run_id}`
-- [ ] `GET /screening-runs/{run_id}/parcels`
 - [ ] `GET /parcels/{parcel_id}`
 - [ ] `GET /health`
 - [ ] `GET /ready`
 
+Optional only if the required endpoints are complete:
+
+- [ ] `GET /screening-runs/{run_id}/parcels`
+
+The screening-run response may contain the ordered shortlist directly; do not create extra endpoints solely for architectural symmetry.
+
 ### Tasks
 
 - [ ] Validate requested MW.
-- [ ] Validate the supported dataset and county.
-- [ ] Verify required source loads.
+- [ ] Validate the one supported dataset and municipality.
+- [ ] Verify required parcel and constraint loads.
 - [ ] Persist requested MW, configuration version, and source versions.
 - [ ] Select the bounded candidate parcel set.
 - [ ] Run the usable-area engine.
@@ -255,13 +331,12 @@ Exact score bands and weights must be versioned and tested before release.
 - [ ] Define simple Investigate, Marginal, and Avoid tiers.
 - [ ] Add deterministic secondary sorting.
 - [ ] Persist ordered parcel results.
-- [ ] Persist timing and candidate counts.
 - [ ] Return clear errors for unsupported input or missing source data.
 - [ ] Prove that identical inputs produce identical ordering.
 
 ### Exit test
 
-On a fresh database, one command sequence loads the bounded data, creates a screening run, retrieves an ordered shortlist, and inspects one parcel without manual SQL changes.
+On a fresh database, one documented command sequence loads the bounded data, creates a screening run, retrieves an ordered shortlist, and inspects one parcel without manual SQL changes.
 
 ---
 
@@ -274,42 +349,41 @@ Ship a small system that can be cold-demonstrated, inspected, and defended in an
 ### Required tasks
 
 - [ ] Add focused unit tests for ranking and configuration boundaries.
-- [ ] Add PostGIS integration tests for the spatial workflow.
-- [ ] Run one reproducible bounded real-data screening.
+- [ ] Add PostGIS integration tests for the bounded spatial workflow.
+- [ ] Run one reproducible real-data screening.
 - [ ] Deploy FastAPI and PostGIS to Railway.
 - [ ] Run Alembic migrations during deployment.
-- [ ] Load the bounded demo dataset.
+- [ ] Load the bounded demo data.
 - [ ] Configure health and readiness checks.
-- [ ] Add structured logs and screening duration.
-- [ ] Document exact source versions and refresh steps.
+- [ ] Add useful structured logs and screening duration.
+- [ ] Document exact source versions and refresh commands.
 - [ ] Add one-command local startup.
 - [ ] Add one-command test execution.
 - [ ] Add a sample request and response to the README.
-- [ ] Add architecture and request-flow diagrams.
+- [ ] Add one architecture/request-flow diagram.
 - [ ] Add screenshots of the deployed API and result.
 - [ ] Document known limitations.
-- [ ] Rehearse the architecture, request flow, CRS policy, and spatial-query choices.
+- [ ] Rehearse the architecture, request flow, CRS policy, ingestion flow, and spatial-query choices.
 - [ ] Freeze Phase 1 after blocking defects are resolved.
-- [ ] Perform an early Railway/PostGIS deployment proof.
 
-### Optional only after the deterministic core is deployed
+### Explicitly not required before freezing Phase 1
 
-- [ ] Generate a bounded diligence memo from an immutable result.
-- [ ] Require structured output.
-- [ ] Verify every number against the input result.
-- [ ] Preserve deterministic results when the model fails.
-- [ ] Prohibit permit, legal, engineering, or investment conclusions.
+- generalized ingestion framework;
+- additional counties or municipalities;
+- frontend;
+- agent-generated memo;
+- advanced monitoring;
+- performance optimization beyond obvious blocking defects.
 
 ### Exit test
 
 From the deployed system:
 
 1. submit requested MW;
-2. receive a screening-run ID;
-3. retrieve a ranked shortlist;
-4. inspect gross, constrained, usable, and largest contiguous acreage;
-5. inspect ranking inputs, score, tier, flags, and provenance;
-6. repeat the run and receive the same ordering.
+2. receive a screening-run ID and ranked result;
+3. inspect gross, constrained, usable, and largest contiguous acreage;
+4. inspect ranking inputs, score, tier, flags, and provenance;
+5. repeat the run and receive the same ordering.
 
 ---
 
