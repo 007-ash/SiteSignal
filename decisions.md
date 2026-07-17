@@ -171,3 +171,31 @@ behavior changes, update the CRS policy.
 
 Code changes that alter one of these contracts must update the corresponding
 document in the same pull request.
+
+## Reusable architecture does not mean universal county support
+
+### Decision
+
+SiteSignal's normalized parcel schema, provenance model, PostGIS workflow, and
+spatial-analysis engine are designed to be reusable across jurisdictions.
+
+The source adapter is not universal. Each county may publish different field
+names, identifiers, formats, coordinate systems, licenses, and update
+procedures. Supporting another county therefore requires a county-specific
+source adapter, field map, CRS validation, and ingestion test.
+
+Phase 1 supports only the documented New Haven subset inside Oswego County.
+The API and ingestion command must reject unsupported jurisdictions rather
+than implying nationwide compatibility.
+
+### Rationale
+
+This preserves an extensible architecture without falsely claiming that one
+loader can ingest every county parcel dataset in the United States.
+
+### Consequence
+
+Adding another county is an explicit development task, not merely a
+configuration change. The reusable core remains unchanged where possible, but
+the new source must pass its own preflight, mapping, provenance, validation,
+and idempotency checks.
