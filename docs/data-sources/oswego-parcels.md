@@ -8,51 +8,63 @@ Oswego County GIS / Department of Real Property Tax Services
 
 - Dataset: Oswego County Active Tax Parcels
 - ArcGIS item ID: `b15088eeef32423b890e4e50b03775d6`
+- ArcGIS layer: `parcelsActive`
 - Discovery source: NYS GIS Clearinghouse
 
 ## Current source vintage
 
-To be confirmed from the downloaded dataset metadata.
+The inspected source contains 59,481 parcel records with a `TAX_STATUS` value
+of March 1, 2025. Twenty-nine records have no taxable-status value.
+
+The dataset manifest records this observed source vintage together with the
+acquisition timestamp, source URL, filename, checksum, source CRS, and record
+count.
 
 ## Acquisition policy
 
-- Download only from the official county or NYS-hosted source. The NYS GIS
-  Clearinghouse is the discovery source; the manifest records the actual
-  download endpoint associated with the ArcGIS item ID above.
-- An acquisition is not considered complete until the download can be
-  reproduced through a documented, scripted step rather than an undocumented
-  browser workflow.
-- The ArcGIS item ID identifies the official dataset. The acquisition
-  timestamp and SHA-256 checksum identify the exact snapshot used by
-  SiteSignal.
+- Download only from the official county or NYS-hosted source.
+- The NYS GIS Clearinghouse is the discovery source. The manifest records the
+  actual ArcGIS download endpoint.
+- An acquisition is not complete until it can be reproduced through a
+  documented, scripted process rather than an undocumented browser workflow.
+- The ArcGIS item ID identifies the official dataset. The acquisition timestamp
+  and SHA-256 checksum identify the exact snapshot used by SiteSignal.
 - Do not use mirrors or repackaged copies.
 
 ## Raw-file policy
 
-- Do not commit raw GIS files to Git. The raw data directory is gitignored.
-- Git tracks the ingestion code, schema, and documentation.
-- PostgreSQL stores each dataset-manifest record.
+- Preserve the downloaded file exactly as received.
+- Never manually edit raw source data.
+- Apply cleaning and corrections through visible, repeatable code.
+- Do not commit raw GIS files to Git.
+- Git tracks ingestion code, schema, and documentation.
+- PostgreSQL stores dataset-manifest and load-run records.
+- Store derived or cleaned files separately from raw files.
 
 ## Provenance fields
 
-Every acquisition is recorded in `dataset_manifest`:
+Every acquisition is recorded in `dataset_manifest` with:
 
 - filename
 - SHA-256 checksum
 - acquisition timestamp
 - source CRS
-- vintage
+- source vintage
 - source URL
 - record count
 
-A changed checksum represents a different dataset snapshot and requires a newmanifest entry. Each downstream analysis result will reference the relevant dataset manifest or load run so SiteSignal can identify exactly which source
-snapshot produced it.
+A changed checksum represents a different dataset snapshot and requires a new
+manifest entry. Downstream analysis results will reference the relevant
+dataset manifest or load run so SiteSignal can identify which source snapshot
+produced them.
 
 ## V1 extraction boundary
 
-The exact deterministic parcel subset will be locked after inspecting the published schema. The rule must be reproducible from source fields and must not depend on manually selecting parcels in a map.
+The exact V1 municipality or geographic subset remains unresolved until parcel
+counts are compared with NWI wetland and FEMA regulatory-floodway coverage.
 
-That is deliberately unresolved for one more commit. I haven't inspected the real fields yet, and I'd rather leave the boundary open than invent a subset rule against a schema I'm imagining. Whatever the rule ends up being, anyone with the same raw file must arrive at the same parcel set.
+The final rule must be reproducible from source attributes or a documented
+spatial boundary. It must not depend on manually selecting parcels in a map.
 
 ## Known limitations
 
@@ -60,3 +72,12 @@ That is deliberately unresolved for one more commit. I haven't inspected the rea
 - It is not a legal boundary survey.
 - Temporal or assessment changes may have occurred after publication.
 - Geometry and attribute completeness must be validated during ingestion.
+
+## Related documentation
+
+See [Oswego parcel field mapping](./oswego-parcel-field-map.md) for the
+normalized schema contract, excluded fields, parcel identity strategy, and
+observed data-quality findings.
+
+See [Oswego parcel ingestion rules](./oswego-parcel-ingestion-rules.md) for
+identity, validation, exclusion, duplicate handling, and pagination policies.

@@ -126,3 +126,48 @@ These items must be resolved through official metadata review, domain research, 
 - ranking bands, weights, and tier boundaries;
 - source-freshness acceptance;
 - Railway API build strategy and Python patch-version handling.
+
+## Documentation boundaries for parcel ingestion
+
+### Decision
+
+Parcel-ingestion documentation is separated by responsibility:
+
+- `docs/data-sources/oswego-parcels.md` documents the source itself:
+  publisher, official dataset identity, acquisition policy, provenance,
+  source vintage, limitations, and the V1 extraction boundary.
+
+- `docs/data-sources/oswego-parcel-field-map.md` documents how the source
+  schema maps into SiteSignal:
+  approved source fields, normalized field names, parcel identity,
+  intentionally excluded fields, and observed data-quality findings.
+
+- `docs/data-sources/oswego-parcel-ingestion-rules.md` documents loader
+  behavior:
+  validation, idempotency, duplicate handling, quarantine rules, acreage
+  policy, privacy restrictions, pagination, and geometry-processing rules.
+
+- `docs/crs-policy.md` documents spatial-coordinate behavior:
+  source CRS preservation, validation, reprojection, analysis CRS, area
+  calculations, and output transformations.
+
+### Rationale
+
+Keeping these concerns separate makes each document answer one clear question:
+
+1. Where did the data come from?
+2. What does each field become inside SiteSignal?
+3. What must the ingestion code do?
+4. How are spatial coordinates handled?
+
+This prevents source facts, database mapping decisions, loader behavior, and
+spatial policy from becoming mixed together in one large document.
+
+### Consequence
+
+When the source changes, update the source and field-map documents. When loader
+behavior changes, update the ingestion-rules document. When coordinate-system
+behavior changes, update the CRS policy.
+
+Code changes that alter one of these contracts must update the corresponding
+document in the same pull request.
