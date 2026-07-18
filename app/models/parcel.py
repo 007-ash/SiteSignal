@@ -25,10 +25,8 @@ class Parcel(Base):
     __tablename__ = "parcel"
 
     __table_args__ = (
-        UniqueConstraint("source_global_id",
-                         name="uq_parcel_source_global_id"),
-        CheckConstraint("gross_acres > 0",
-                        name="ck_parcel_gross_acres_positive"),
+        UniqueConstraint("source_global_id", name="uq_parcel_source_global_id"),
+        CheckConstraint("gross_acres > 0", name="ck_parcel_gross_acres_positive"),
         Index("ix_parcel_geometry", "geometry", postgresql_using="gist"),
         Index("ix_parcel_load_run_id", "load_run_id"),
         Index("ix_parcel_municipality", "municipality"),
@@ -62,14 +60,10 @@ class Parcel(Base):
         nullable=False,
     )
 
-    source_parcel_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=False)
-    property_class_code: Mapped[str | None] = mapped_column(
-        String(50), nullable=True)
-    property_class: Mapped[str | None] = mapped_column(
-        String(255), nullable=True)
-    municipality: Mapped[str | None] = mapped_column(
-        String(255), nullable=False)
+    source_parcel_id: Mapped[str | None] = mapped_column(String(255), nullable=False)
+    property_class_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    property_class: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    municipality: Mapped[str | None] = mapped_column(String(255), nullable=False)
 
     geometry: Mapped[WKBElement] = mapped_column(
         Geometry(
@@ -85,8 +79,7 @@ class Parcel(Base):
         nullable=False,
     )
 
-    tax_status_date: Mapped[date |
-                            None] = mapped_column(Date, nullable=False)
+    tax_status_date: Mapped[date | None] = mapped_column(Date, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
