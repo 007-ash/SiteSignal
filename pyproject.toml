@@ -16,6 +16,8 @@ dependencies = [
     "pydantic-settings==2.14.2",
     "alembic==1.18.5",
     "geoalchemy2==0.20.0",
+    "shapely==2.1.2",
+    "pyproj==3.7.2",
 ]
 
 [project.optional-dependencies]
