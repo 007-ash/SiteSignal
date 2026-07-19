@@ -199,3 +199,33 @@ Adding another county is an explicit development task, not merely a
 configuration change. The reusable core remains unchanged where possible, but
 the new source must pass its own preflight, mapping, provenance, validation,
 and idempotency checks.
+
+## Milestone 1 retrospective: scope became too broad
+
+Milestone 1 took longer and became harder to reason about because it combined
+too many distinct responsibilities:
+
+- source research and field inspection;
+- privacy and identity decisions;
+- CRS policy;
+- provenance schema design;
+- migrations;
+- extraction;
+- geometry conversion and validation;
+- attribute normalization;
+- idempotent database loading.
+
+Although the completed result is useful, the milestone stopped feeling like
+one coherent unit of work.
+
+Future milestones must have:
+
+- a hard scope boundary;
+- an explicit exit test before implementation begins;
+- a fixed timebox;
+- only the work consumed by that milestone;
+- optional abstraction cut before extending the schedule.
+
+The accepted Milestone 1 result is intentionally bounded to the official
+New Haven parcel subset: 1,636 source records, 1,635 valid parcels loaded,
+one invalid source geometry rejected, and repeatable idempotent reloads.

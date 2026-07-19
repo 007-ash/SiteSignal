@@ -1,3 +1,4 @@
+import json
 from collections.abc import Sequence
 from hashlib import sha256
 from typing import Any
@@ -151,6 +152,17 @@ def global_id_signature(features: list[dict[str, Any]]) -> str:
     return sha256(encoded_ids).hexdigest()
 
 
+def source_snapshot_sha256(features: list[dict[str, Any]]) -> str:
+    """Hash the complete ordered source snapshot, including geometry."""
+    canonical_json = json.dumps(
+        features,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+    return sha256(canonical_json.encode("utf-8")).hexdigest()
+
+
 def main() -> None:
     features = fetch_new_haven_parcels()
     global_ids = [feature["attributes"]["GlobalID"] for feature in features]
@@ -158,6 +170,7 @@ def main() -> None:
     print(f"features={len(features)}")
     print(f"unique_global_ids={len(set(global_ids))}")
     print(f"global_id_signature={global_id_signature(features)}")
+    print(f"source_snapshot_sha256={source_snapshot_sha256(features)}")
 
 
 if __name__ == "__main__":

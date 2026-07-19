@@ -4,7 +4,7 @@
 
 SiteSignal is a PostGIS-backed solar parcel screening API. For a reproducible subset of official Oswego County parcel data, it overlays real public constraint geometry, subtracts constrained land, calculates the largest contiguous usable area, and returns reproducible ranked parcel results with source provenance.
 
-> **Status:** The bounded Phase 1 scope is locked. Foundation implementation is in progress.
+**Status:** Milestone 1 is complete. The bounded New Haven parcel dataset is loaded reproducibly into PostGIS.
 
 ## Why this project exists
 
@@ -345,3 +345,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow, commit standards
 ## Core sentence
 
 **SiteSignal turns real parcel geometry into a reproducible answer about how much contiguous land remains and which candidate deserves investigation first.**
+
+## Load the bounded parcel dataset
+
+SiteSignal Phase 1 supports the New Haven municipality subset of the official
+Oswego County Active Tax Parcels dataset.
+
+Run the loader:
+
+```powershell
+python -m app.services.oswego_parcel_loader 2026-07-19

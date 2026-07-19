@@ -60,10 +60,10 @@ class Parcel(Base):
         nullable=False,
     )
 
-    source_parcel_id: Mapped[str | None] = mapped_column(String(255), nullable=False)
+    source_parcel_id: Mapped[str] = mapped_column(String(255), nullable=False)
     property_class_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     property_class: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    municipality: Mapped[str | None] = mapped_column(String(255), nullable=False)
+    municipality: Mapped[str] = mapped_column(String(255), nullable=False)
 
     geometry: Mapped[WKBElement] = mapped_column(
         Geometry(
